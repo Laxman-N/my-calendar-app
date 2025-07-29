@@ -20,9 +20,9 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "types": ["react", "firebase"] // Explicitly include firebase types
       },
       "include": ["src"]
-      // Removed: "references": [{ "path": "./tsconfig.node.json" }]
     }
     

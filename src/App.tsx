@@ -9,11 +9,10 @@
         doc,
         query,
         where,
-        // getDocs, // Removed: TS6133 - 'getDocs' is declared but its value is never read.
         setLogLevel
     } from 'firebase/firestore';
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, User } from 'firebase/auth'; // Added User type
-    import { QuerySnapshot, DocumentData, QueryDocumentSnapshot } from '@firebase/firestore'; // Added specific Firestore types
+    import { getAuth, signInAnonymously, onAuthStateChanged, User } from 'firebase/auth'; // Removed signInWithCustomToken
+    import { QuerySnapshot, DocumentData, QueryDocumentSnapshot } from '@firebase/firestore';
 
     // --- Helper: Icon Components (using Lucide-React SVG paths for a cleaner look) ---
     const CalendarDaysIcon = ({ className }: { className?: string }) => (
@@ -48,9 +47,6 @@
     );
 
     // --- Firebase Configuration ---
-    // These values are taken directly from your provided screenshot (Screenshot 2025-07-29 at 5.06.28 AM.jpg)
-    // For Vercel deployment, we will use these directly.
-    // In a real production app, these would typically come from environment variables.
     const firebaseConfig = {
         apiKey: "AIzaSyAQUvChCVgwaUfcoMtZLkMcv7YgDv30F7g",
         authDomain: "my-calendar-app-9d13c.firebaseapp.com",
@@ -61,7 +57,6 @@
         measurementId: "G-X3YRMMEHRP"
     };
 
-    // For Vercel build, we don't rely on __app_id global. Use projectId directly.
     const appId = firebaseConfig.projectId;
 
     // Initialize Firebase
@@ -91,7 +86,7 @@
     }
 
     // --- Helper Functions ---
-    const generateTimeSlots = (): string[] => { // Explicit return type
+    const generateTimeSlots = (): string[] => {
         const slots: string[] = [];
         const start = new Date();
         start.setHours(10, 30, 0, 0); // Start at 10:30 AM
@@ -99,17 +94,16 @@
         end.setHours(19, 30, 0, 0); // End at 7:30 PM (19:30)
 
         let current = new Date(start);
-        while (current.getTime() <= end.getTime()) { // Use getTime() for accurate comparison
+        while (current.getTime() <= end.getTime()) {
             slots.push(current.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
             current.setMinutes(current.getMinutes() + 20);
         }
         return slots;
     };
 
-    const formatDate = (date: Date): string => date.toISOString().split('T')[0]; // Explicit return type
+    const formatDate = (date: Date): string => date.toISOString().split('T')[0];
 
-    // Converts 2-digit hour, 2-digit minute, AM/PM time string to HH:MM (24-hour)
-    const time12to24 = (time12h: string): string => { // Explicit return type
+    const time12to24 = (time12h: string): string => {
         const [time, modifier] = time12h.split(' ');
         let [hours, minutes] = time.split(':');
         if (hours === '12') {
@@ -120,8 +114,7 @@
         return `${hours.padStart(2, '0')}:${minutes}`;
     };
 
-    // Converts HH:MM (24-hour) to 2-digit hour, 2-digit minute, AM/PM time string
-    const formatTime24to12 = (time24h: string): string => { // Explicit return type
+    const formatTime24to12 = (time24h: string): string => {
         const [hours, minutes] = time24h.split(':').map(Number);
         const date = new Date();
         date.setHours(hours, minutes, 0, 0);
@@ -137,22 +130,20 @@
         const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
         const [isDeleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
         const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null);
-        const [selectedTime, setSelectedTime] = useState<string | null>(null); // This will be 12-hour format from timeSlots
+        const [selectedTime, setSelectedTime] = useState<string | null>(null);
         const [loading, setLoading] = useState<boolean>(true);
         const [message, setMessage] = useState<{ type: 'success' | 'error' | ''; text: string }>({ type: '', text: '' });
 
 
         // Authentication
         useEffect(() => {
-            const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => { // Explicitly typed 'user'
+            const unsubscribe = onAuthStateChanged(auth, async (user: User | null) => {
                 if (user) {
                     setUserId(user.uid);
                 } else {
                     try {
-                        // For Vercel build, we don't rely on __initial_auth_token global.
-                        // Sign in anonymously as default.
                         await signInAnonymously(auth);
-                    } catch (error) {
+                    } catch (error: unknown) { // Changed to unknown
                         console.error("Authentication Error:", error);
                     }
                 }
@@ -166,69 +157,60 @@
             if (!isAuthReady || !userId) return;
 
             setLoading(true);
-            const formattedDate = formatDate(selectedDate); // YYYY-MM-DD
-            const dayOfWeek = selectedDate.getDay(); // 0 (Sun) - 6 (Sat)
+            const formattedDate = formatDate(selectedDate);
+            const dayOfWeek = selectedDate.getDay();
             const bookingsCol = collection(db, `artifacts/${appId}/public/data/bookings`);
 
-            // Listener for one-time bookings on the selected date
             const oneTimeQuery = query(bookingsCol, where("date", "==", formattedDate));
 
-            const unsubOneTime = onSnapshot(oneTimeQuery, (oneTimeSnapshot: QuerySnapshot<DocumentData>) => { // Explicitly typed 'oneTimeSnapshot'
-                const oneTimeBookings: Booking[] = oneTimeSnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({ id: doc.id, ...doc.data() } as Booking)); // Explicitly typed 'doc' and cast
+            const unsubOneTime = onSnapshot(oneTimeQuery, (oneTimeSnapshot: QuerySnapshot<DocumentData>) => {
+                const oneTimeBookings: Booking[] = oneTimeSnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({ id: doc.id, ...doc.data() } as Booking));
 
-                // Listener for recurring bookings on the selected day of the week
                 const recurringQuery = query(bookingsCol, where("dayOfWeek", "==", dayOfWeek));
 
-                const unsubRecurring = onSnapshot(recurringQuery, (recurringSnapshot: QuerySnapshot<DocumentData>) => { // Explicitly typed 'recurringSnapshot'
+                const unsubRecurring = onSnapshot(recurringQuery, (recurringSnapshot: QuerySnapshot<DocumentData>) => {
                     const recurringBookings: Booking[] = recurringSnapshot.docs
-                        .map((doc: QueryDocumentSnapshot<DocumentData>) => ({ id: doc.id, ...doc.data() } as Booking)) // Explicitly typed 'doc' and cast
-                        .filter((b: Booking) => { // Explicitly typed 'b'
-                            // Ensure recurring booking's startDate is on or before the selectedDate
-                            const bookingStartDate = new Date(b.startDate + 'T00:00:00'); // Add T00:00:00 for consistent parsing
+                        .map((doc: QueryDocumentSnapshot<DocumentData>) => ({ id: doc.id, ...doc.data() } as Booking))
+                        .filter((b: Booking) => {
+                            const bookingStartDate = new Date(b.startDate + 'T00:00:00');
                             return selectedDate.getTime() >= bookingStartDate.getTime();
                         });
 
-                    // Combine both sets of bookings
                     const allBookings: Booking[] = [...oneTimeBookings, ...recurringBookings];
 
-                    // Filter out duplicates if a recurring booking was explicitly overridden for a specific date
-                    // For simplicity, if a one-time booking exists for a slot, it takes precedence.
-                    const uniqueBookingsMap = new Map<string, Booking>(); // Key: HH:mm (24-hour)
+                    const uniqueBookingsMap = new Map<string, Booking>();
                     allBookings.forEach(booking => {
-                        uniqueBookingsMap.set(booking.time, booking); // Last one wins for a given time slot
+                        uniqueBookingsMap.set(booking.time, booking);
                     });
 
                     setDailyBookings(Array.from(uniqueBookingsMap.values()));
                     setLoading(false);
-                }, (error: Error) => { // Explicitly typed 'error'
+                }, (error: unknown) => { // Changed to unknown
                     console.error("Error fetching recurring bookings:", error);
                     setLoading(false);
                 });
 
-                return () => unsubRecurring(); // Cleanup recurring listener
-            }, (error: Error) => { // Explicitly typed 'error'
+                return () => unsubRecurring();
+            }, (error: unknown) => { // Changed to unknown
                 console.error("Error fetching one-time bookings:", error);
                 setLoading(false);
             });
 
-            return () => unsubOneTime(); // Cleanup one-time listener
-        }, [isAuthReady, userId, selectedDate, appId]); // Added appId to dependencies
+            return () => unsubOneTime();
+        }, [isAuthReady, userId, selectedDate, appId]);
 
-        // Memoized time slots for performance
         const timeSlots = useMemo(() => generateTimeSlots(), []);
 
-        // Memoized map of time slots to bookings for quick lookup
         const timeSlotMap = useMemo(() => {
             const map = new Map<string, Booking | null>();
-            timeSlots.forEach(slot12h => map.set(slot12h, null)); // Initialize all slots as available
+            timeSlots.forEach(slot12h => map.set(slot12h, null));
 
             dailyBookings.forEach(booking => {
-                const startTime12h = formatTime24to12(booking.time); // Convert 24h booking time to 12h slot format
-                const numSlots = booking.duration / 20; // How many 20-min slots this booking occupies
+                const startTime12h = formatTime24to12(booking.time);
+                const numSlots = booking.duration / 20;
                 const startIndex = timeSlots.findIndex(t => t === startTime12h);
 
                 if (startIndex !== -1) {
-                    // Mark all occupied slots with the booking object
                     for (let i = 0; i < numSlots; i++) {
                         if (startIndex + i < timeSlots.length) {
                             map.set(timeSlots[startIndex + i], booking);
@@ -242,23 +224,23 @@
         const handleOpenModal = (time: string) => {
             setSelectedTime(time);
             setIsModalOpen(true);
-            setMessage({ type: '', text: '' }); // Clear any previous messages when opening modal
+            setMessage({ type: '', text: '' });
         };
 
         const handleOpenDeleteConfirm = (booking: Booking) => {
             setBookingToDelete(booking);
             setDeleteConfirmOpen(true);
-            setMessage({ type: '', text: '' }); // Clear any previous messages when opening delete modal
+            setMessage({ type: '', text: '' });
         };
 
         const handleDelete = async () => {
-            if (!bookingToDelete) return; // Should not happen
+            if (!bookingToDelete) return;
 
             try {
                 const bookingDocRef = doc(db, `artifacts/${appId}/public/data/bookings`, bookingToDelete.id);
                 await deleteDoc(bookingDocRef);
                 setMessage({ type: 'success', text: 'Booking deleted successfully!' });
-            } catch (error: Error) { // Explicitly typed 'error'
+            } catch (error: unknown) { // Changed to unknown
                 console.error("Error deleting booking:", error);
                 setMessage({ type: 'error', text: 'Failed to delete booking. Please try again.' });
             } finally {
@@ -280,10 +262,10 @@
                 <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl">
                     <Header
                         selectedDate={selectedDate}
-                        onDateChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))} // Ensure date is parsed consistently
+                        onDateChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))}
                         onPrevDay={() => changeDay(-1)}
                         onNextDay={() => changeDay(1)}
-                        userId={userId} // Pass userId to Header for display
+                        userId={userId}
                     />
                     <main className="bg-white rounded-xl shadow-lg mt-6">
                         <div className="grid grid-cols-1 divide-y divide-slate-100">
@@ -292,10 +274,8 @@
                             ) : (
                                 timeSlots.map(time => {
                                     const booking = timeSlotMap.get(time);
-                                    // Handle undefined case explicitly for type safety
                                     const isStartOfBooking = booking && formatTime24to12(booking.time) === time;
 
-                                    // If it's a booked slot but not its start, don't render a new time slot div
                                     if (booking && !isStartOfBooking) {
                                       return null;
                                     }
@@ -304,7 +284,7 @@
                                         <TimeSlot
                                             key={time}
                                             time={time}
-                                            booking={booking || null} // Ensure it's always Booking | null
+                                            booking={booking || null}
                                             onBook={() => handleOpenModal(time)}
                                             onDelete={() => booking && handleOpenDeleteConfirm(booking)}
                                         />
@@ -326,7 +306,7 @@
                         selectedDate={selectedDate}
                         selectedTime={selectedTime}
                         dailyBookings={dailyBookings}
-                        setMessage={setMessage} // Pass setMessage to BookingModal
+                        setMessage={setMessage}
                     />
                 )}
                 {isDeleteConfirmOpen && bookingToDelete && (
@@ -355,7 +335,7 @@
         onDateChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
         onPrevDay: () => void;
         onNextDay: () => void;
-        userId: string | null; // Added userId prop
+        userId: string | null;
     }) {
         return (
             <header className="flex flex-col sm:flex-row items-center justify-between p-4 bg-white rounded-xl shadow-lg">
@@ -386,12 +366,11 @@
     }
 
     function TimeSlot({ time, booking, onBook, onDelete }: {
-        time: string; // 12-hour format
+        time: string;
         booking: Booking | null;
         onBook: () => void;
         onDelete: () => void;
     }) {
-        // Calculate height based on booking duration
         const slotHeightClass = booking ? (booking.duration === 40 ? 'h-36' : 'h-20') : 'h-20';
         const CallIcon = booking?.callType === 'onboarding' ? BriefcaseIcon : RepeatIcon;
         const colorClass = booking?.callType === 'onboarding' ? 'border-indigo-500 bg-indigo-50' : 'border-teal-500 bg-teal-50';
@@ -440,9 +419,9 @@
     function BookingModal({ onClose, selectedDate, selectedTime, dailyBookings, setMessage }: {
         onClose: () => void;
         selectedDate: Date;
-        selectedTime: string; // 12-hour format
+        selectedTime: string;
         dailyBookings: Booking[];
-        setMessage: React.Dispatch<React.SetStateAction<{ type: 'success' | 'error' | ''; text: string }>>; // Add setMessage prop
+        setMessage: React.Dispatch<React.SetStateAction<{ type: 'success' | 'error' | ''; text: string }>>;
     }) {
         const [clientSearch, setClientSearch] = useState<string>('');
         const [selectedClient, setSelectedClient] = useState<typeof DUMMY_CLIENTS[0] | null>(null);
@@ -455,18 +434,16 @@
                 c.phone.includes(clientSearch)
             ), [clientSearch]);
 
-        const checkOverlap = useCallback((newBookingTime: Date, newBookingDuration: number): boolean => { // Explicit return type
+        const checkOverlap = useCallback((newBookingTime: Date, newBookingDuration: number): boolean => {
             const newBookingEndTime = new Date(newBookingTime.getTime() + newBookingDuration * 60000);
 
             for (const existing of dailyBookings) {
-                // Convert existing booking time (24h) to Date object for comparison
                 const [exHours, exMinutes] = existing.time.split(':').map(Number);
-                const existingStartTime = new Date(selectedDate); // Use selectedDate as base
+                const existingStartTime = new Date(selectedDate);
                 existingStartTime.setHours(exHours, exMinutes, 0, 0);
 
                 const existingEndTime = new Date(existingStartTime.getTime() + existing.duration * 60000);
 
-                // Check for overlap
                 if (newBookingTime < existingEndTime && newBookingEndTime > existingStartTime) {
                     return true;
                 }
@@ -476,7 +453,7 @@
 
         const handleSubmit = async (e: React.FormEvent) => {
             e.preventDefault();
-            setMessage({ type: '', text: '' }); // Clear previous messages
+            setMessage({ type: '', text: '' });
             if (!selectedClient) {
                 setMessage({ type: 'error', text: "Please select a client from the list." });
                 return;
@@ -484,7 +461,7 @@
 
             setIsSubmitting(true);
             const duration = callType === 'onboarding' ? 40 : 20;
-            const time24 = time12to24(selectedTime || ''); // Handle selectedTime possibly being null
+            const time24 = selectedTime ? time12to24(selectedTime) : ''; // Handle selectedTime possibly being null
             const newBookingDate = new Date(`${formatDate(selectedDate)}T${time24}`);
 
             if (checkOverlap(newBookingDate, duration)) {
@@ -504,11 +481,11 @@
 
             try {
                 await addDoc(collection(db, `artifacts/${appId}/public/data/bookings`), newBookingData);
-                setMessage({ type: 'success', text: 'Booking successful!' }); // Success message
+                setMessage({ type: 'success', text: 'Booking successful!' });
                 onClose();
-            } catch (err: any) { // Explicitly typed 'err' as any for now, can refine if needed
+            } catch (err: unknown) { // Changed to unknown
                 console.error("Error adding booking:", err);
-                setMessage({ type: 'error', text: "Failed to save booking. Please try again." }); // Error message
+                setMessage({ type: 'error', text: "Failed to save booking. Please try again." });
             } finally {
                 setIsSubmitting(false);
             }
@@ -557,8 +534,6 @@
                                     </div>
                                 </div>
                             </div>
-                            {/* Error message display using the Toast system */}
-                            {/* {error && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-md">{error}</p>} */}
                         </div>
                         <div className="p-4 bg-slate-50 flex justify-end gap-x-3">
                             <button type="button" onClick={onClose} className="px-4 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium hover:bg-slate-100">Cancel</button>
