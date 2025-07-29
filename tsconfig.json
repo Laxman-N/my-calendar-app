@@ -7,30 +7,22 @@
         "skipLibCheck": true,
 
         /* Bundler mode */
-        "moduleResolution": "node",
+        "moduleResolution": "node", // Keep this as 'node'
         "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
         "noEmit": true,
         "jsx": "react-jsx",
 
-        /* Paths for module resolution */
-        "baseUrl": ".", // This is important for paths to work
-        "paths": {
-          "firebase/app": ["./node_modules/firebase/app/dist/index.d.ts"],
-          "firebase/firestore": ["./node_modules/firebase/firestore/dist/index.d.ts"],
-          "firebase/auth": ["./node_modules/firebase/auth/dist/index.d.ts"],
-          "@firebase/firestore": ["./node_modules/@firebase/firestore/dist/index.d.ts"]
-        },
-
         /* Linting & Strictness */
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
-        "esModuleInterop": true,
-        "forceConsistentCasingInFileNames": true,
-        "types": ["react", "firebase"] // Keep this, as it's still generally useful
+        "esModuleInterop": true, // Crucial for Firebase imports
+        "forceConsistentCasingInFileNames": true
+        // Removed: "paths" section
+        // Removed: "types": ["react", "firebase"] - relying on bundled types
       },
       "include": ["src"]
     }
