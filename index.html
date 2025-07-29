@@ -5,21 +5,7 @@
         <link rel="icon" type="image/svg+xml" href="/vite.svg" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Coach's Daily Calendar</title>
-        <!-- Tailwind CSS CDN for local development (bypasses PostCSS for quick styling) -->
-        <script src="https://cdn.tailwindcss.com"></script>
-        <!-- Optional: If you have custom Tailwind config you want CDN to pick up -->
-        <script>
-            tailwind.config = {
-              theme: {
-                extend: {
-                  fontFamily: {
-                    inter: ['Inter', 'sans-serif'],
-                  },
-                }
-              }
-            }
-        </script>
-        <!-- Link to your main CSS file (for global styles, but @tailwind directives will be removed) -->
+        <!-- Link to your main CSS file (now imports Tailwind via Vite plugin) -->
         <link rel="stylesheet" href="/src/index.css" />
       </head>
       <body>

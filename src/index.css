@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* src/index.css */
+@import "tailwindcss"; /* New import syntax for Tailwind CSS v4 */
 
 /* Global styles and animations */
 body {
